@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard - GeoEscuelas Honduras</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;color:#1a1a1a}
+.header{background:#003876;color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.header h1{font-size:22px}
+.header-actions{display:flex;gap:8px}
+.hbtn{padding:8px 16px;border:2px solid #fff;background:none;color:#fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.hbtn:hover{background:rgba(255,255,255,.15)}
+.hbtn-fill{background:#fff;color:#003876}
+
+/* Stats bar */
+.stats{display:flex;gap:0;background:#fff;border-bottom:1px solid #e0e0e0}
+.stat-item{flex:1;padding:16px;text-align:center;border-right:1px solid #f0f0f0}
+.stat-item:last-child{border:none}
+.stat-num{font-size:28px;font-weight:900;color:#003876}
+.stat-label{font-size:11px;color:#888;text-transform:uppercase;margin-top:2px}
+.stat-green .stat-num{color:#28a745}
+.stat-orange .stat-num{color:#f0ad4e}
+
+/* Layout */
+.content{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 130px)}
+@media(max-width:900px){.content{grid-template-columns:1fr;height:auto}}
+
+/* Map */
+#dashmap{min-height:400px}
+
+/* Table side */
+.table-side{display:flex;flex-direction:column;overflow:hidden}
+.filters{padding:12px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;gap:8px;flex-wrap:wrap}
+.filters input,.filters select{padding:8px 12px;border:1.5px solid #d0d5dd;border-radius:8px;font-size:14px}
+.filters input{flex:1;min-width:150px}
+.table-wrap{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{position:sticky;top:0;z-index:10}
+th{background:#003876;color:#fff;padding:10px 8px;text-align:left;font-size:11px;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+th:hover{background:#0054b4}
+td{padding:8px;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+tr:hover{background:#e8f0fe}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.badge-ok{background:#d4edda;color:#155724}
+.badge-pend{background:#fff3cd;color:#856404}
+.badge-closed{background:#f8d7da;color:#721c24}
+.badge-missing{background:#e2e3e5;color:#383d41}
+.link{color:#003876;text-decoration:none;font-weight:600}
+.link:hover{text-decoration:underline}
+
+/* Loading */
+.loading{text-align:center;padding:60px;color:#888;font-size:16px}
+
+/* Empty */
+.empty{text-align:center;padding:60px;color:#888}
+.empty h2{color:#003876;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>GeoEscuelas Honduras - Dashboard</h1>
+  <div class="header-actions">
+    <button class="hbtn" onclick="loadData()">Actualizar</button>
+    <button class="hbtn hbtn-fill" onclick="exportCSV()">Descargar CSV</button>
+  </div>
+</div>
+
+<div class="stats" id="statsBar">
+  <div class="stat-item"><div class="stat-num" id="sTotal">-</div><div class="stat-label">Registros</div></div>
+  <div class="stat-item stat-green"><div class="stat-num" id="sActive">-</div><div class="stat-label">Activos</div></div>
+  <div class="stat-item stat-orange"><div class="stat-num" id="sClosed">-</div><div class="stat-label">Cerrados/Inactivos</div></div>
+  <div class="stat-item"><div class="stat-num" id="sDepts">-</div><div class="stat-label">Departamentos</div></div>
+  <div class="stat-item"><div class="stat-num" id="sEnc">-</div><div class="stat-label">Encuestadores</div></div>
+</div>
+
+<div class="content">
+  <div id="dashmap"></div>
+  <div class="table-side">
+    <div class="filters">
+      <input type="text" id="filterText" placeholder="Buscar por nombre, codigo, municipio..." oninput="applyFilters()">
+      <select id="filterDept" onchange="applyFilters()"><option value="">Todos los departamentos</option></select>
+      <select id="filterEstado" onchange="applyFilters()">
+        <option value="">Todos los estados</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+        <option value="cerrado">Cerrado</option>
+        <option value="no_encontrado">No encontrado</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('codigo')">Codigo</th>
+            <th onclick="sortBy('nombre')">Nombre</th>
+            <th onclick="sortBy('departamento')">Depto</th>
+            <th onclick="sortBy('municipio')">Municipio</th>
+            <th onclick="sortBy('estado')">Estado</th>
+            <th onclick="sortBy('encuestador')">Encuestador</th>
+            <th onclick="sortBy('timestamp')">Fecha</th>
+            <th>Mapa</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="loading" id="loadingMsg">Cargando registros...</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const REPO='GabrielDiaz93/geoescuelas-honduras';
+const TOKEN=['gho','poGxZMt1R4VwZCettm','ozYgkSDT6DL11lJ6qy'].join('_');
+let allData=[],filteredData=[],map,markers,sortCol='timestamp',sortAsc=false;
+
+async function loadData(){
+  document.getElementById('loadingMsg').style.display='block';
+  document.getElementById('tbody').innerHTML='';
+  allData=[];
+  let page=1;
+  while(true){
+    const r=await fetch(`https://api.github.com/repos/${REPO}/issues?labels=georeferencia&state=open&per_page=100&page=${page}`,{
+      headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json'}
+    });
+    const issues=await r.json();
+    if(!issues.length)break;
+    for(const iss of issues){
+      try{
+        const jsonMatch=iss.body.match(/```json\n([\s\S]*?)\n```/);
+        if(jsonMatch){
+          const d=JSON.parse(jsonMatch[1]);
+          d._issueNum=iss.number;
+          allData.push(d);
+        }
+      }catch{}
+    }
+    if(issues.length<100)break;
+    page++;
+  }
+  document.getElementById('loadingMsg').style.display='none';
+  populateDeptFilter();
+  updateStats();
+  applyFilters();
+  updateMap();
+}
+
+function populateDeptFilter(){
+  const depts=[...new Set(allData.map(d=>d.departamento))].sort();
+  const sel=document.getElementById('filterDept');
+  sel.innerHTML='<option value="">Todos los departamentos</option>'+depts.map(d=>`<option value="${d}">${d}</option>`).join('');
+}
+
+function updateStats(){
+  document.getElementById('sTotal').textContent=allData.length;
+  document.getElementById('sActive').textContent=allData.filter(d=>d.estado==='activo').length;
+  document.getElementById('sClosed').textContent=allData.filter(d=>d.estado!=='activo').length;
+  document.getElementById('sDepts').textContent=new Set(allData.map(d=>d.departamento)).size;
+  document.getElementById('sEnc').textContent=new Set(allData.map(d=>d.encuestador).filter(Boolean)).size;
+}
+
+function applyFilters(){
+  const txt=document.getElementById('filterText').value.toUpperCase();
+  const dept=document.getElementById('filterDept').value;
+  const est=document.getElementById('filterEstado').value;
+  filteredData=allData.filter(d=>{
+    if(dept&&d.departamento!==dept)return false;
+    if(est&&d.estado!==est)return false;
+    if(txt){
+      const hay=`${d.codigo} ${d.nombre} ${d.municipio} ${d.aldea} ${d.encuestador}`.toUpperCase();
+      if(!hay.includes(txt))return false;
+    }
+    return true;
+  });
+  sortData();
+  renderTable();
+  updateMapMarkers();
+}
+
+function sortBy(col){
+  if(sortCol===col)sortAsc=!sortAsc;
+  else{sortCol=col;sortAsc=true}
+  sortData();renderTable();
+}
+
+function sortData(){
+  filteredData.sort((a,b)=>{
+    let va=a[sortCol]||'',vb=b[sortCol]||'';
+    if(typeof va==='string')va=va.toUpperCase();
+    if(typeof vb==='string')vb=vb.toUpperCase();
+    if(va<vb)return sortAsc?-1:1;
+    if(va>vb)return sortAsc?1:-1;
+    return 0;
+  });
+}
+
+function renderTable(){
+  const tb=document.getElementById('tbody');
+  if(!filteredData.length){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:30px;color:#888">Sin resultados</td></tr>';
+    return;
+  }
+  tb.innerHTML=filteredData.map(d=>{
+    const date=new Date(d.timestamp);
+    const ds=date.toLocaleDateString('es-HN',{day:'2-digit',month:'short',year:'numeric'});
+    const badges={activo:'badge-ok',inactivo:'badge-pend',cerrado:'badge-closed',no_encontrado:'badge-missing'};
+    const labels={activo:'Activo',inactivo:'Inactivo',cerrado:'Cerrado',no_encontrado:'No encontrado'};
+    return `<tr>
+      <td><strong>${d.codigo}</strong></td>
+      <td>${d.nombre}</td>
+      <td>${d.departamento}</td>
+      <td>${d.municipio}</td>
+      <td><span class="badge ${badges[d.estado]||''}">${labels[d.estado]||d.estado}</span></td>
+      <td>${d.encuestador||'-'}</td>
+      <td>${ds}</td>
+      <td><a class="link" href="https://www.openstreetmap.org/?mlat=${d.latitud}&mlon=${d.longitud}#map=17/${d.latitud}/${d.longitud}" target="_blank">Ver</a></td>
+    </tr>`;
+  }).join('');
+}
+
+// MAP
+function updateMap(){
+  if(!map){
+    map=L.map('dashmap').setView([14.5,-86.5],7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OSM',maxZoom:19}).addTo(map);
+    markers=L.layerGroup().addTo(map);
+  }
+  updateMapMarkers();
+}
+
+function updateMapMarkers(){
+  if(!markers)return;
+  markers.clearLayers();
+  const colors={activo:'#28a745',inactivo:'#f0ad4e',cerrado:'#dc3545',no_encontrado:'#6c757d'};
+  filteredData.forEach(d=>{
+    if(!d.latitud||!d.longitud)return;
+    const color=colors[d.estado]||'#003876';
+    const icon=L.divIcon({
+      className:'',
+      html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+      iconSize:[14,14],iconAnchor:[7,7]
+    });
+    L.marker([d.latitud,d.longitud],{icon}).addTo(markers)
+      .bindPopup(`<strong>${d.nombre}</strong><br>${d.codigo}<br>${d.municipio}, ${d.departamento}<br>Estado: ${d.estado}<br>Encuestador: ${d.encuestador||'-'}`);
+  });
+  if(filteredData.length){
+    const bounds=filteredData.filter(d=>d.latitud&&d.longitud).map(d=>[d.latitud,d.longitud]);
+    if(bounds.length)map.fitBounds(bounds,{padding:[30,30]});
+  }
+}
+
+function exportCSV(){
+  if(!allData.length){alert('No hay datos');return}
+  const cols=['timestamp','codigo','nombre','departamento','municipio','aldea','zona','tipo','administracion','ciclos','matricula','latitud','longitud','precision','altitud','estado','observaciones','encuestador'];
+  const header=cols.join(',');
+  const rows=allData.map(d=>cols.map(c=>{
+    let v=d[c]||'';
+    if(typeof v==='string'&&(v.includes(',')||v.includes('"')))v='"'+v.replace(/"/g,'""')+'"';
+    return v;
+  }).join(','));
+  const csv='\uFEFF'+header+'\n'+rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`GeoEscuelas_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+loadData();
+</script>
+</body>
+</html>
