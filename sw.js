@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geoescuelas-v1';
+const CACHE_NAME = 'geoescuelas-v2';
 const ASSETS = [
   './',
   './georeferenciacion.html',
