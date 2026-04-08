@@ -211,9 +211,11 @@ textarea{resize:vertical;min-height:60px}
     <input type="text" id="cfgEncuestador" placeholder="Tu nombre completo" onchange="saveConfig()">
   </div>
   <div class="card">
-    <h3>Google Sheets API</h3>
-    <label>URL del Web App</label>
-    <input type="url" id="cfgSheetsUrl" placeholder="https://script.google.com/macros/s/.../exec" onchange="saveConfig()">
+    <h3>Sincronizacion GitHub</h3>
+    <label>Token de GitHub</label>
+    <input type="password" id="cfgGhToken" placeholder="github_pat_..." onchange="saveConfig()">
+    <label>Repositorio (owner/repo)</label>
+    <input type="text" id="cfgGhRepo" placeholder="usuario/geoescuelas-honduras" onchange="saveConfig()">
     <button class="btn btn-secondary" onclick="testAPI()" style="margin-top:8px">Probar conexion</button>
     <div id="apiTestResult" style="margin-top:8px;font-size:13px"></div>
   </div>
@@ -250,7 +252,7 @@ let deferredInstallPrompt = null;
 
 const DB_KEY = 'geoescuelas_registros';
 const CFG_KEY = 'geoescuelas_config';
-const DEFAULT_SHEETS_URL = '';
+const DEFAULT_GH_REPO = 'GabrielDiaz93/geoescuelas-honduras';
 
 // ========== INIT ==========
 document.addEventListener('DOMContentLoaded', init);
@@ -533,7 +535,7 @@ function guardarRegistro() {
   document.getElementById('observaciones').value = '';
   updateHistorial();
 
-  if (navigator.onLine && cfg.sheetsUrl) {
+  if (navigator.onLine && cfg.ghToken) {
     syncRecord(record);
   }
 }
@@ -548,17 +550,45 @@ function saveRegistros(regs) {
   localStorage.setItem(DB_KEY, JSON.stringify(regs));
 }
 
-// ========== SYNC ==========
+// ========== SYNC (GitHub Issues) ==========
 async function syncRecord(record) {
   const cfg = getConfig();
-  if (!cfg.sheetsUrl) return false;
+  if (!cfg.ghToken || !cfg.ghRepo) return false;
   try {
-    const resp = await fetch(cfg.sheetsUrl, {
+    const title = `[GEO] ${record.codigo} - ${record.nombre}`;
+    const body = `## Registro de Georeferenciacion\n\n` +
+      `| Campo | Valor |\n|---|---|\n` +
+      `| **Codigo SEE** | ${record.codigo} |\n` +
+      `| **Nombre** | ${record.nombre} |\n` +
+      `| **Departamento** | ${record.departamento} |\n` +
+      `| **Municipio** | ${record.municipio} |\n` +
+      `| **Aldea** | ${record.aldea} |\n` +
+      `| **Zona** | ${record.zona} |\n` +
+      `| **Tipo** | ${record.tipo} |\n` +
+      `| **Administracion** | ${record.administracion} |\n` +
+      `| **Ciclos** | ${record.ciclos} |\n` +
+      `| **Matricula 2024** | ${record.matricula} |\n` +
+      `| **Latitud** | ${record.latitud} |\n` +
+      `| **Longitud** | ${record.longitud} |\n` +
+      `| **Precision (m)** | ${record.precision} |\n` +
+      `| **Altitud** | ${record.altitud || 'N/A'} |\n` +
+      `| **Estado** | ${record.estado} |\n` +
+      `| **Observaciones** | ${record.observaciones || '-'} |\n` +
+      `| **Encuestador** | ${record.encuestador} |\n` +
+      `| **Timestamp** | ${record.timestamp} |\n\n` +
+      `**Mapa:** https://www.openstreetmap.org/?mlat=${record.latitud}&mlon=${record.longitud}#map=17/${record.latitud}/${record.longitud}\n\n` +
+      `\`\`\`json\n${JSON.stringify(record)}\n\`\`\``;
+
+    const resp = await fetch(`https://api.github.com/repos/${cfg.ghRepo}/issues`, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(record)
+      headers: {
+        'Authorization': 'Bearer ' + cfg.ghToken,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json'
+      },
+      body: JSON.stringify({ title, body, labels: ['georeferencia'] })
     });
-    if (resp.ok) {
+    if (resp.ok || resp.status === 201) {
       const regs = getRegistros();
       const idx = regs.findIndex(r => r.id === record.id);
       if (idx >= 0) { regs[idx].synced = true; saveRegistros(regs); }
@@ -571,8 +601,8 @@ async function syncRecord(record) {
 
 async function syncAll() {
   const cfg = getConfig();
-  if (!cfg.sheetsUrl || !navigator.onLine) {
-    if (!cfg.sheetsUrl) toast('Configura la URL de Google Sheets primero');
+  if (!cfg.ghToken || !navigator.onLine) {
+    if (!cfg.ghToken) toast('Configura el token de GitHub en Config');
     return;
   }
   const regs = getRegistros();
@@ -583,6 +613,8 @@ async function syncAll() {
   let ok = 0;
   for (const rec of pending) {
     if (await syncRecord(rec)) ok++;
+    // Small delay to avoid rate limiting
+    if (pending.length > 5) await new Promise(r => setTimeout(r, 500));
   }
   toast(`${ok}/${pending.length} sincronizados`);
   updateHistorial();
@@ -672,30 +704,37 @@ function getConfig() {
 function loadConfig() {
   const cfg = getConfig();
   document.getElementById('cfgEncuestador').value = cfg.encuestador || '';
-  document.getElementById('cfgSheetsUrl').value = cfg.sheetsUrl || DEFAULT_SHEETS_URL;
+  document.getElementById('cfgGhToken').value = cfg.ghToken || '';
+  document.getElementById('cfgGhRepo').value = cfg.ghRepo || DEFAULT_GH_REPO;
 }
 
 function saveConfig() {
   const cfg = {
     encuestador: document.getElementById('cfgEncuestador').value.trim(),
-    sheetsUrl: document.getElementById('cfgSheetsUrl').value.trim()
+    ghToken: document.getElementById('cfgGhToken').value.trim(),
+    ghRepo: document.getElementById('cfgGhRepo').value.trim() || DEFAULT_GH_REPO
   };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   toast('Configuracion guardada');
 }
 
 async function testAPI() {
-  const url = document.getElementById('cfgSheetsUrl').value.trim();
+  const token = document.getElementById('cfgGhToken').value.trim();
+  const repo = document.getElementById('cfgGhRepo').value.trim() || DEFAULT_GH_REPO;
   const el = document.getElementById('apiTestResult');
-  if (!url) { el.innerHTML = '<span style="color:var(--err)">Ingresa una URL primero</span>'; return; }
+  if (!token) { el.innerHTML = '<span style="color:var(--err)">Ingresa un token primero</span>'; return; }
   el.innerHTML = 'Probando...';
   try {
-    const r = await fetch(url);
+    const r = await fetch(`https://api.github.com/repos/${repo}`, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+    });
     const j = await r.json();
-    if (j.status === 'ok') {
-      el.innerHTML = '<span style="color:var(--ok)">Conexion exitosa</span>';
+    if (r.ok && j.has_issues) {
+      el.innerHTML = `<span style="color:var(--ok)">Conectado a ${j.full_name}</span>`;
+    } else if (r.status === 401) {
+      el.innerHTML = '<span style="color:var(--err)">Token invalido</span>';
     } else {
-      el.innerHTML = '<span style="color:var(--err)">Respuesta inesperada</span>';
+      el.innerHTML = '<span style="color:var(--err)">Repo no encontrado o sin issues</span>';
     }
   } catch {
     el.innerHTML = '<span style="color:var(--err)">Error de conexion</span>';
