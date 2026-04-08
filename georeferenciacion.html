@@ -509,8 +509,8 @@ function guardar(){
   document.getElementById('obs').value='';
   updHist();
 
-  // Auto sync if online
-  if(navigator.onLine&&cfg.ghToken)syncRecord(rec);
+  // Auto sync always (if offline, will retry when connection returns)
+  if(cfg.ghToken)syncRecord(rec);
 }
 
 // ===== STORAGE =====
