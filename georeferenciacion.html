@@ -11,784 +11,616 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--pri:#003876;--pri-d:#002654;--pri-l:#0054b4;--acc:#00a5e0;--ok:#28a745;--warn:#ffc107;--err:#dc3545;--bg:#f0f4f8;--card:#fff;--txt:#1a1a1a;--txt2:#666;--radius:12px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:70px}
-/* Header */
-.header{background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff;padding:12px 16px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.header h1{font-size:18px;font-weight:700}
-.header small{font-size:11px;opacity:.8}
-/* Connection banner */
-.conn-banner{text-align:center;padding:4px;font-size:12px;font-weight:600;transition:.3s}
-.conn-banner.online{background:var(--ok);color:#fff}
-.conn-banner.offline{background:var(--err);color:#fff}
-/* Install banner */
-.install-banner{background:var(--warn);color:#000;text-align:center;padding:8px;font-size:13px;cursor:pointer;display:none}
-.install-banner:hover{background:#e0a800}
-/* Tabs */
-.tabs{display:flex;background:var(--card);border-bottom:2px solid #e0e0e0;position:sticky;top:56px;z-index:999}
-.tab{flex:1;padding:12px 8px;text-align:center;font-size:14px;font-weight:600;color:var(--txt2);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:.2s}
-.tab.active{color:var(--pri);border-bottom-color:var(--pri)}
-/* Panels */
-.panel{display:none;padding:12px;max-width:600px;margin:0 auto}
-.panel.active{display:block}
-/* Cards */
-.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.card h3{font-size:14px;color:var(--pri);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
-/* Form */
-label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin:8px 0 4px;text-transform:uppercase}
-input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid #d0d5dd;border-radius:8px;font-size:15px;background:#fff;transition:.2s}
-input:focus,select:focus,textarea:focus{border-color:var(--pri);outline:none;box-shadow:0 0 0 3px rgba(0,56,118,.15)}
-textarea{resize:vertical;min-height:60px}
-/* Search */
-.search-wrap{position:relative}
-.search-wrap input{padding-left:36px}
-.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txt2)}
-.results-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:0 0 8px 8px;max-height:250px;overflow-y:auto;z-index:100;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-.results-list.show{display:block}
-.result-item{padding:10px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px}
-.result-item:hover,.result-item.selected{background:#e8f0fe}
-.result-item .code{color:var(--pri);font-weight:700;font-size:12px}
-.result-item .name{font-weight:600}
-.result-item .loc{color:var(--txt2);font-size:11px}
-/* GPS */
-.gps-box{display:flex;align-items:center;gap:10px;padding:12px;background:#f8f9fa;border-radius:8px;margin:8px 0}
-.gps-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.gps-dot.seeking{background:var(--warn);animation:pulse 1s infinite}
-.gps-dot.locked{background:var(--ok)}
-.gps-dot.error{background:var(--err)}
-.gps-info{font-size:13px;flex:1}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-/* Map */
-#map{height:200px;border-radius:8px;margin:8px 0;border:1px solid #d0d5dd}
-.map-fallback{height:200px;border-radius:8px;margin:8px 0;background:#e8f0fe;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--pri);font-size:14px;border:2px dashed var(--pri-l)}
-/* Prefilled fields */
-.prefilled{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:13px;padding:8px 0}
-.prefilled .pf-label{color:var(--txt2);font-size:11px}
-.prefilled .pf-value{font-weight:600;margin-bottom:4px}
-/* Buttons */
-.btn{display:block;width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;text-align:center;transition:.2s}
-.btn-primary{background:var(--pri);color:#fff}
-.btn-primary:hover{background:var(--pri-d)}
-.btn-primary:disabled{background:#a0a0a0;cursor:not-allowed}
-.btn-secondary{background:#e8f0fe;color:var(--pri);margin-top:8px}
-.btn-danger{background:var(--err);color:#fff;margin-top:8px}
-.btn-sm{padding:8px 16px;font-size:13px;width:auto;display:inline-block}
-/* History */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.stat{background:var(--card);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.stat .num{font-size:24px;font-weight:800;color:var(--pri)}
-.stat .lbl{font-size:11px;color:var(--txt2);text-transform:uppercase}
-.hist-item{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px}
-.hist-item .hi-name{font-weight:700}
-.hist-item .hi-meta{color:var(--txt2);font-size:11px;margin-top:2px}
-.hi-synced{color:var(--ok)}
-.hi-pending{color:var(--warn)}
-/* Toast */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:.3s;pointer-events:none}
+:root{--pri:#003876;--ok:#28a745;--warn:#f0ad4e;--err:#dc3545;--bg:#f0f4f8;--card:#fff;--txt:#1a1a1a;--gray:#888;--radius:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;-webkit-tap-highlight-color:transparent}
+
+/* === HEADER === */
+.header{background:var(--pri);color:#fff;padding:14px 16px;text-align:center;position:sticky;top:0;z-index:1000}
+.header h1{font-size:20px}
+
+/* === CONNECTION === */
+.conn{text-align:center;padding:5px;font-size:13px;font-weight:700}
+.conn.on{background:var(--ok);color:#fff}
+.conn.off{background:var(--err);color:#fff}
+
+/* === INSTALL === */
+.install-bar{background:var(--warn);text-align:center;padding:10px;font-size:15px;font-weight:700;cursor:pointer;display:none}
+
+/* === WELCOME SCREEN === */
+.welcome{position:fixed;inset:0;background:var(--pri);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;padding:30px;text-align:center}
+.welcome h1{font-size:28px;margin-bottom:8px}
+.welcome p{font-size:16px;opacity:.8;margin-bottom:30px}
+.welcome input{width:100%;max-width:320px;padding:16px;border:none;border-radius:12px;font-size:18px;text-align:center;margin-bottom:16px}
+.welcome .wbtn{background:#fff;color:var(--pri);border:none;padding:16px 40px;border-radius:12px;font-size:20px;font-weight:800;cursor:pointer}
+.welcome .wbtn:disabled{opacity:.4}
+
+/* === MAIN CONTENT === */
+.main{padding:12px;max-width:500px;margin:0 auto;padding-bottom:80px}
+
+/* === STEP CARDS === */
+.step{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:5px solid #ccc;transition:.3s}
+.step.active{border-left-color:var(--pri)}
+.step.done{border-left-color:var(--ok)}
+.step-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.step-num{width:36px;height:36px;border-radius:50%;background:#e0e0e0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0}
+.step.active .step-num{background:var(--pri)}
+.step.done .step-num{background:var(--ok)}
+.step-title{font-size:17px;font-weight:700}
+.step-body{font-size:14px;color:var(--gray)}
+
+/* === SEARCH === */
+.search-box{position:relative;margin-top:10px}
+.search-box input{width:100%;padding:14px 16px;border:2px solid #d0d5dd;border-radius:12px;font-size:17px}
+.search-box input:focus{border-color:var(--pri);outline:none}
+.sresults{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:0 0 12px 12px;max-height:300px;overflow-y:auto;z-index:100;display:none;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.sresults.show{display:block}
+.sr-item{padding:14px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,56,118,.1)}
+.sr-item:active{background:#e8f0fe}
+.sr-code{color:var(--pri);font-weight:800;font-size:13px}
+.sr-name{font-size:15px;font-weight:700}
+.sr-loc{color:var(--gray);font-size:12px;margin-top:2px}
+
+/* === SELECTED CENTER === */
+.selected-card{background:#e8f4e8;border-radius:12px;padding:14px;margin-top:10px}
+.sel-name{font-size:16px;font-weight:800;color:var(--pri)}
+.sel-detail{font-size:13px;color:#555;margin-top:4px;line-height:1.5}
+.sel-change{color:var(--pri);font-size:14px;font-weight:700;text-decoration:underline;cursor:pointer;margin-top:6px;display:inline-block}
+
+/* === GPS === */
+.gps-status{display:flex;align-items:center;gap:12px;padding:14px;background:#f8f9fa;border-radius:12px;margin-top:10px}
+.gps-icon{font-size:28px}
+.gps-text{font-size:15px;flex:1}
+.gps-text strong{display:block;font-size:13px;color:var(--gray);margin-top:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.gps-seeking{animation:blink 1.2s infinite}
+#minimap{height:160px;border-radius:12px;margin-top:10px;border:1px solid #d0d5dd}
+.coords{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;font-size:12px;color:var(--gray)}
+.manual-gps{margin-top:8px;font-size:13px}
+.manual-gps summary{color:var(--pri);cursor:pointer;font-weight:600}
+.manual-gps .mg-row{display:flex;gap:8px;margin-top:8px}
+.manual-gps input{flex:1;padding:10px;border:1.5px solid #d0d5dd;border-radius:8px;font-size:14px}
+.manual-gps button{padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;white-space:nowrap}
+
+/* === FIELD INFO === */
+.field-select{width:100%;padding:14px;border:2px solid #d0d5dd;border-radius:12px;font-size:16px;background:#fff;margin-top:10px;-webkit-appearance:none}
+.field-select:focus{border-color:var(--pri);outline:none}
+.field-textarea{width:100%;padding:14px;border:2px solid #d0d5dd;border-radius:12px;font-size:16px;min-height:70px;resize:vertical;margin-top:8px}
+.field-textarea:focus{border-color:var(--pri);outline:none}
+
+/* === BIG SAVE BUTTON === */
+.btn-save{width:100%;padding:20px;border:none;border-radius:var(--radius);font-size:22px;font-weight:800;cursor:pointer;text-align:center;margin-top:10px;transition:.2s}
+.btn-save.ready{background:var(--ok);color:#fff;transform:scale(1)}
+.btn-save.ready:active{transform:scale(.97)}
+.btn-save.not-ready{background:#ccc;color:#fff;pointer-events:none}
+
+/* === SUCCESS ANIMATION === */
+.success-overlay{position:fixed;inset:0;background:rgba(40,167,69,.95);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.success-overlay.show{display:flex}
+.success-check{font-size:100px;animation:popIn .4s}
+.success-text{font-size:24px;font-weight:800;margin-top:10px}
+.success-sub{font-size:16px;opacity:.8;margin-top:6px}
+@keyframes popIn{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* === BOTTOM NAV === */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;border-top:2px solid #e0e0e0;z-index:1000}
+.bnav-btn{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--gray);background:none;border:none;cursor:pointer}
+.bnav-btn.active{color:var(--pri)}
+.bnav-icon{font-size:24px;display:block}
+
+/* === HISTORY PAGE === */
+.hist-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.hs{background:var(--card);border-radius:12px;padding:14px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.hs-num{font-size:28px;font-weight:900;color:var(--pri)}
+.hs-label{font-size:11px;color:var(--gray);text-transform:uppercase;margin-top:2px}
+.hs-ok .hs-num{color:var(--ok)}
+.hs-pend .hs-num{color:var(--warn)}
+.hist-actions{display:flex;gap:8px;margin-bottom:14px}
+.hist-btn{flex:1;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+.hist-btn-sync{background:var(--pri);color:#fff}
+.hist-btn-excel{background:#e8f0fe;color:var(--pri)}
+.hist-item{padding:12px;border-bottom:1px solid #f0f0f0}
+.hi-name{font-weight:700;font-size:15px}
+.hi-info{font-size:12px;color:var(--gray);margin-top:3px}
+.hi-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.hi-badge-ok{background:#d4edda;color:#155724}
+.hi-badge-pend{background:#fff3cd;color:#856404}
+.hist-delete{width:100%;margin-top:14px;padding:12px;background:none;border:2px solid var(--err);color:var(--err);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer}
+
+/* === LOADING === */
+.loading{position:fixed;inset:0;background:rgba(0,56,118,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;color:#fff}
+.loading h2{margin-top:16px;font-size:20px}
+.loading p{margin-top:8px;opacity:.7}
+.spin{width:50px;height:50px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* === PAGE VISIBILITY === */
+.page{display:none}.page.show{display:block}
+
+/* === TOAST === */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:12px;font-size:15px;font-weight:600;z-index:9999;opacity:0;transition:.3s;pointer-events:none;text-align:center;max-width:90%}
 .toast.show{opacity:1}
-/* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);display:flex;border-top:1px solid #e0e0e0;z-index:1000}
-.bottom-nav .tab{padding:8px 4px;font-size:11px}
-.bottom-nav .tab-icon{font-size:20px;display:block}
-/* Loading */
-.loading-overlay{position:fixed;inset:0;background:rgba(0,56,118,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;color:#fff}
-.loading-overlay h2{margin-top:16px;font-size:20px}
-.loading-overlay p{margin-top:8px;opacity:.7;font-size:14px}
-.spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- Loading overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
+<!-- LOADING -->
+<div class="loading" id="loader">
+  <div class="spin"></div>
   <h2>GeoEscuelas Honduras</h2>
-  <p>Cargando base de datos de centros...</p>
+  <p>Cargando 23,447 centros educativos...</p>
 </div>
 
-<!-- Connection banner -->
-<div class="conn-banner online" id="connBanner">En linea</div>
-
-<!-- Install banner -->
-<div class="install-banner" id="installBanner" onclick="installPWA()">
-  Instalar GeoEscuelas en tu dispositivo
-</div>
-
-<!-- Header -->
-<div class="header">
+<!-- WELCOME (first time only) -->
+<div class="welcome" id="welcome" style="display:none">
   <h1>GeoEscuelas Honduras</h1>
-  <small>SACE 2024 &bull; 23,447 centros educativos</small>
+  <p>Escriba su nombre para comenzar</p>
+  <input type="text" id="welcomeName" placeholder="Su nombre completo" oninput="document.getElementById('welcomeBtn').disabled=!this.value.trim()">
+  <br>
+  <button class="wbtn" id="welcomeBtn" onclick="startApp()" disabled>COMENZAR</button>
 </div>
 
-<!-- Toast -->
+<!-- SUCCESS ANIMATION -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-check">&#10004;</div>
+  <div class="success-text">Guardado</div>
+  <div class="success-sub" id="successSub"></div>
+</div>
+
+<!-- CONNECTION -->
+<div class="conn on" id="conn">En linea</div>
+
+<!-- INSTALL -->
+<div class="install-bar" id="installBar" onclick="installPWA()">Instalar en el celular</div>
+
+<!-- HEADER -->
+<div class="header"><h1>GeoEscuelas Honduras</h1></div>
+
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- ===== TAB: REGISTRAR ===== -->
-<div class="panel active" id="panelRegistrar">
+<!-- ============ PAGE: REGISTRAR ============ -->
+<div class="page show" id="pageReg">
+<div class="main">
 
-  <!-- Buscador -->
-  <div class="card">
-    <h3>Buscar Centro Educativo</h3>
-    <div class="search-wrap">
-      <span class="search-icon">&#128269;</span>
-      <input type="text" id="searchInput" placeholder="Nombre, codigo o municipio..." autocomplete="off">
-      <div class="results-list" id="resultsList"></div>
+  <!-- STEP 1: BUSCAR ESCUELA -->
+  <div class="step active" id="step1">
+    <div class="step-head">
+      <div class="step-num">1</div>
+      <div class="step-title">Buscar la escuela</div>
     </div>
-    <div id="selectedInfo" style="display:none;margin-top:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong id="selName" style="color:var(--pri)"></strong>
-        <button class="btn-sm btn-secondary" onclick="clearSelection()">Cambiar</button>
+    <div class="step-body">Escriba el nombre o municipio de la escuela</div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Ej: San Jose, Comayagua..." autocomplete="off">
+      <div class="sresults" id="searchResults"></div>
+    </div>
+    <div id="selectedCard" style="display:none">
+      <div class="selected-card">
+        <div class="sel-name" id="selName"></div>
+        <div class="sel-detail" id="selDetail"></div>
+        <span class="sel-change" onclick="clearSelection()">Cambiar escuela</span>
       </div>
-      <div class="prefilled" id="prefilledFields"></div>
     </div>
   </div>
 
-  <!-- GPS -->
-  <div class="card">
-    <h3>Ubicacion GPS</h3>
-    <div class="gps-box">
-      <div class="gps-dot seeking" id="gpsDot"></div>
-      <div class="gps-info" id="gpsInfo">Buscando senal GPS...</div>
-      <button class="btn-sm btn-secondary" onclick="refreshGPS()">Actualizar</button>
+  <!-- STEP 2: UBICACION GPS -->
+  <div class="step" id="step2">
+    <div class="step-head">
+      <div class="step-num">2</div>
+      <div class="step-title">Ubicacion GPS</div>
     </div>
-    <div id="mapContainer">
-      <div id="map"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:12px;color:var(--txt2)">
-      <div>Lat: <strong id="dispLat">--</strong></div>
-      <div>Lon: <strong id="dispLon">--</strong></div>
-      <div>Precision: <strong id="dispAcc">--</strong></div>
-      <div>Altitud: <strong id="dispAlt">--</strong></div>
-    </div>
-    <details style="margin-top:8px">
-      <summary style="font-size:12px;color:var(--pri);cursor:pointer">Ingresar coordenadas manualmente</summary>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-        <input type="number" step="any" id="manualLat" placeholder="Latitud (ej: 14.07)" style="font-size:13px">
-        <input type="number" step="any" id="manualLon" placeholder="Longitud (ej: -87.19)" style="font-size:13px">
+    <div class="step-body">Asegurese de estar frente a la escuela</div>
+    <div class="gps-status" id="gpsBox">
+      <div class="gps-icon gps-seeking" id="gpsIcon">&#128225;</div>
+      <div class="gps-text">
+        <span id="gpsMsg">Buscando senal GPS...</span>
+        <strong id="gpsDetail"></strong>
       </div>
-      <button class="btn-sm btn-secondary" onclick="setManualGPS()" style="margin-top:6px">Fijar coordenadas</button>
+    </div>
+    <div id="minimap"></div>
+    <div class="coords">
+      <div>Lat: <strong id="dLat">--</strong></div>
+      <div>Lon: <strong id="dLon">--</strong></div>
+    </div>
+    <details class="manual-gps">
+      <summary>Escribir coordenadas a mano</summary>
+      <div class="mg-row">
+        <input type="number" step="any" id="mLat" placeholder="Latitud">
+        <input type="number" step="any" id="mLon" placeholder="Longitud">
+        <button onclick="setManualGPS()">OK</button>
+      </div>
     </details>
   </div>
 
-  <!-- Estado y observaciones -->
-  <div class="card">
-    <h3>Informacion de campo</h3>
-    <label>Estado del centro</label>
-    <select id="estadoCentro">
-      <option value="activo">Activo - Funcionando</option>
-      <option value="inactivo">Inactivo - Temporalmente cerrado</option>
-      <option value="cerrado">Cerrado permanentemente</option>
-      <option value="no_encontrado">No encontrado en la ubicacion</option>
+  <!-- STEP 3: ESTADO -->
+  <div class="step" id="step3">
+    <div class="step-head">
+      <div class="step-num">3</div>
+      <div class="step-title">Estado de la escuela</div>
+    </div>
+    <div class="step-body">Seleccione lo que observa</div>
+    <select class="field-select" id="estado">
+      <option value="activo">Funcionando normalmente</option>
+      <option value="inactivo">Cerrada temporalmente</option>
+      <option value="cerrado">Cerrada permanentemente</option>
+      <option value="no_encontrado">No la encontre</option>
     </select>
-    <label>Observaciones</label>
-    <textarea id="observaciones" placeholder="Notas adicionales..."></textarea>
+    <textarea class="field-textarea" id="obs" placeholder="Notas (opcional)..."></textarea>
   </div>
 
-  <!-- Boton guardar -->
-  <button class="btn btn-primary" id="btnGuardar" onclick="guardarRegistro()" disabled>
-    Guardar Registro
+  <!-- BIG SAVE BUTTON -->
+  <button class="btn-save not-ready" id="btnSave" onclick="guardar()">
+    GUARDAR REGISTRO
   </button>
+  <div id="btnHint" style="text-align:center;color:var(--gray);font-size:13px;margin-top:6px">
+    Busque una escuela y espere la senal GPS
+  </div>
+
+</div>
 </div>
 
-<!-- ===== TAB: HISTORIAL ===== -->
-<div class="panel" id="panelHistorial">
-  <div class="stats">
-    <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total</div></div>
-    <div class="stat"><div class="num hi-synced" id="statSync">0</div><div class="lbl">Sincronizados</div></div>
-    <div class="stat"><div class="num hi-pending" id="statPend">0</div><div class="lbl">Pendientes</div></div>
+<!-- ============ PAGE: HISTORIAL ============ -->
+<div class="page" id="pageHist">
+<div class="main">
+  <div class="hist-stats">
+    <div class="hs"><div class="hs-num" id="hTotal">0</div><div class="hs-label">Total</div></div>
+    <div class="hs hs-ok"><div class="hs-num" id="hSync">0</div><div class="hs-label">Enviados</div></div>
+    <div class="hs hs-pend"><div class="hs-num" id="hPend">0</div><div class="hs-label">Pendientes</div></div>
   </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <h3 style="margin:0">Registros</h3>
-      <div>
-        <button class="btn-sm btn-secondary" onclick="exportarExcel()">Exportar Excel</button>
-        <button class="btn-sm btn-primary" onclick="syncAll()" style="margin-left:4px">Sincronizar</button>
-      </div>
-    </div>
-    <div id="historialList"><p style="color:var(--txt2);font-size:13px;text-align:center;padding:20px">Sin registros aun</p></div>
+  <div class="hist-actions">
+    <button class="hist-btn hist-btn-sync" onclick="syncAll()">Enviar pendientes</button>
+    <button class="hist-btn hist-btn-excel" onclick="exportExcel()">Descargar Excel</button>
   </div>
-  <button class="btn btn-danger" onclick="borrarTodo()" style="font-size:13px;padding:10px">Borrar todos los registros locales</button>
-</div>
-
-<!-- ===== TAB: CONFIG ===== -->
-<div class="panel" id="panelConfig">
-  <div class="card">
-    <h3>Encuestador</h3>
-    <label>Nombre del encuestador</label>
-    <input type="text" id="cfgEncuestador" placeholder="Tu nombre completo" onchange="saveConfig()">
-  </div>
-  <div class="card">
-    <h3>Sincronizacion GitHub</h3>
-    <label>Token de GitHub</label>
-    <input type="password" id="cfgGhToken" placeholder="github_pat_..." onchange="saveConfig()">
-    <label>Repositorio (owner/repo)</label>
-    <input type="text" id="cfgGhRepo" placeholder="usuario/geoescuelas-honduras" onchange="saveConfig()">
-    <button class="btn btn-secondary" onclick="testAPI()" style="margin-top:8px">Probar conexion</button>
-    <div id="apiTestResult" style="margin-top:8px;font-size:13px"></div>
-  </div>
-  <div class="card">
-    <h3>Informacion</h3>
-    <div style="font-size:13px;color:var(--txt2);line-height:1.6">
-      <p><strong>GeoEscuelas Honduras</strong></p>
-      <p>Proyecto de georeferenciacion de centros educativos</p>
-      <p>Base de datos: SACE 2024</p>
-      <p>Centros cargados: <strong id="cfgCentrosCount">0</strong></p>
-      <p>Almacenamiento local: <strong id="cfgStorage">0 KB</strong></p>
-      <p style="margin-top:8px">Version 1.0 - Presidencia de Honduras</p>
+  <div style="background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06)">
+    <div id="histList" style="max-height:60vh;overflow-y:auto">
+      <div style="padding:30px;text-align:center;color:var(--gray)">Sin registros todavia</div>
     </div>
   </div>
+  <button class="hist-delete" onclick="borrarTodo()">Borrar todos los registros</button>
+</div>
 </div>
 
-<!-- Bottom navigation -->
-<div class="bottom-nav">
-  <button class="tab active" onclick="switchTab('Registrar')" id="tabRegistrar"><span class="tab-icon">&#128205;</span>Registrar</button>
-  <button class="tab" onclick="switchTab('Historial')" id="tabHistorial"><span class="tab-icon">&#128202;</span>Historial</button>
-  <button class="tab" onclick="switchTab('Config')" id="tabConfig"><span class="tab-icon">&#9881;</span>Config</button>
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <button class="bnav-btn active" id="navReg" onclick="goPage('Reg')"><span class="bnav-icon">&#128205;</span>Registrar</button>
+  <button class="bnav-btn" id="navHist" onclick="goPage('Hist')"><span class="bnav-icon">&#128202;</span>Historial</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script>
-// ========== GLOBALS ==========
-let centros = [];
-let selectedCentro = null;
-let currentGPS = null;
-let map = null, marker = null;
-let gpsWatchId = null;
-let deferredInstallPrompt = null;
+// ===== CONFIG =====
+const DB='geoescuelas_reg',CK='geoescuelas_cfg';
+const GH_REPO='GabrielDiaz93/geoescuelas-honduras';
+let centros=[],selCentro=null,gps=null,map=null,marker=null,watchId=null,installEvt=null;
 
-const DB_KEY = 'geoescuelas_registros';
-const CFG_KEY = 'geoescuelas_config';
-const DEFAULT_GH_REPO = 'GabrielDiaz93/geoescuelas-honduras';
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded',init);
 
-// ========== INIT ==========
-document.addEventListener('DOMContentLoaded', init);
-
-async function init() {
-  loadConfig();
-  updateConnectionBanner();
-  window.addEventListener('online', onConnectionChange);
-  window.addEventListener('offline', onConnectionChange);
-  registerSW();
-  await loadCentros();
+async function init(){
+  // Read token from URL hash (e.g. #tk=xxx)
+  autoConfig();
+  // Check if first time
+  const cfg=getCfg();
+  if(!cfg.name){
+    document.getElementById('welcome').style.display='flex';
+  }
+  // Connection
+  updConn();
+  window.addEventListener('online',()=>{updConn();toast('Conexion recuperada');syncAll()});
+  window.addEventListener('offline',updConn);
+  // PWA
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;document.getElementById('installBar').style.display='block'});
+  // Load data
+  try{const r=await fetch('centros.json');centros=await r.json()}catch{centros=[];toast('Error cargando datos')}
+  // Search
   initSearch();
+  // GPS
   startGPS();
-  updateHistorial();
-  updateConfigInfo();
-  document.getElementById('loadingOverlay').style.display = 'none';
+  // Done
+  document.getElementById('loader').style.display='none';
+  updHist();
 }
 
-// ========== PWA ==========
-function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+function autoConfig(){
+  const h=location.hash.slice(1);
+  if(!h)return;
+  const p=new URLSearchParams(h);
+  const tk=p.get('tk');
+  if(tk){
+    const cfg=getCfg();
+    cfg.ghToken=tk;
+    cfg.ghRepo=GH_REPO;
+    saveCfg(cfg);
+    history.replaceState(null,'',location.pathname);
   }
 }
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  document.getElementById('installBanner').style.display = 'block';
-});
-
-function installPWA() {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    deferredInstallPrompt.userChoice.then(() => {
-      document.getElementById('installBanner').style.display = 'none';
-      deferredInstallPrompt = null;
-    });
-  }
+function startApp(){
+  const name=document.getElementById('welcomeName').value.trim();
+  if(!name)return;
+  const cfg=getCfg();
+  cfg.name=name;
+  if(!cfg.ghRepo)cfg.ghRepo=GH_REPO;
+  saveCfg(cfg);
+  document.getElementById('welcome').style.display='none';
 }
 
-// ========== CONNECTION ==========
-function updateConnectionBanner() {
-  const b = document.getElementById('connBanner');
-  if (navigator.onLine) {
-    b.className = 'conn-banner online';
-    b.textContent = 'En linea';
-  } else {
-    b.className = 'conn-banner offline';
-    b.textContent = 'Sin internet - Modo offline';
-  }
+function installPWA(){
+  if(installEvt){installEvt.prompt();installEvt.userChoice.then(()=>{document.getElementById('installBar').style.display='none';installEvt=null})}
 }
 
-function onConnectionChange() {
-  updateConnectionBanner();
-  if (navigator.onLine) {
-    toast('Conexion recuperada - Sincronizando...');
-    syncAll();
-  }
+// ===== CONNECTION =====
+function updConn(){
+  const c=document.getElementById('conn');
+  if(navigator.onLine){c.className='conn on';c.textContent='En linea'}
+  else{c.className='conn off';c.textContent='Sin internet (los datos se guardan en el celular)'}
 }
 
-// ========== LOAD CENTROS ==========
-async function loadCentros() {
-  try {
-    const resp = await fetch('centros.json');
-    centros = await resp.json();
-  } catch {
-    centros = [];
-    toast('Error cargando base de datos');
-  }
-}
-
-// ========== SEARCH ==========
-function initSearch() {
-  const input = document.getElementById('searchInput');
-  const list = document.getElementById('resultsList');
-  let debounce = null;
-
-  input.addEventListener('input', () => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      const q = input.value.trim().toUpperCase();
-      if (q.length < 2) { list.classList.remove('show'); return; }
-      const results = searchCentros(q, 30);
-      renderResults(results);
-    }, 200);
+// ===== SEARCH =====
+function initSearch(){
+  const inp=document.getElementById('searchInput'),res=document.getElementById('searchResults');
+  let tm=null;
+  inp.addEventListener('input',()=>{
+    clearTimeout(tm);
+    tm=setTimeout(()=>{
+      const q=inp.value.trim().toUpperCase();
+      if(q.length<2){res.classList.remove('show');return}
+      const found=[];
+      const terms=q.split(/\s+/);
+      for(let i=0;i<centros.length&&found.length<25;i++){
+        const c=centros[i];
+        const t=`${c.c} ${c.n} ${c.m} ${c.d} ${c.a}`.toUpperCase();
+        if(terms.every(w=>t.includes(w)))found.push(c);
+      }
+      if(!found.length){res.innerHTML='<div class="sr-item" style="color:var(--gray)">No se encontro. Revise el nombre.</div>';res.classList.add('show');return}
+      res.innerHTML=found.map((c,i)=>
+        `<div class="sr-item" onclick="pickCentro(${i})"><div class="sr-code">${c.c}</div><div class="sr-name">${c.n}</div><div class="sr-loc">${c.m}, ${c.d} &bull; ${c.z} &bull; Matricula: ${c.mt.toLocaleString()}</div></div>`
+      ).join('');
+      res.classList.add('show');
+      res._d=found;
+    },200);
   });
-
-  input.addEventListener('focus', () => {
-    if (input.value.trim().length >= 2) {
-      list.classList.add('show');
-    }
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.search-wrap')) list.classList.remove('show');
-  });
+  inp.addEventListener('focus',()=>{if(inp.value.trim().length>=2)res.classList.add('show')});
+  document.addEventListener('click',e=>{if(!e.target.closest('.search-box'))res.classList.remove('show')});
 }
 
-function searchCentros(q, limit) {
-  const terms = q.split(/\s+/);
-  const results = [];
-  for (let i = 0; i < centros.length && results.length < limit; i++) {
-    const c = centros[i];
-    const hay = `${c.c} ${c.n} ${c.m} ${c.d} ${c.a}`.toUpperCase();
-    if (terms.every(t => hay.includes(t))) {
-      results.push(c);
-    }
+function pickCentro(i){
+  const res=document.getElementById('searchResults');
+  selCentro=res._d[i];
+  res.classList.remove('show');
+  document.getElementById('searchInput').style.display='none';
+  document.getElementById('selectedCard').style.display='block';
+  document.getElementById('selName').textContent=selCentro.n;
+  document.getElementById('selDetail').innerHTML=
+    `<strong>${selCentro.c}</strong> &bull; ${selCentro.m}, ${selCentro.d}<br>${selCentro.a} &bull; ${selCentro.z} &bull; ${selCentro.t}<br>${selCentro.ad} &bull; Matricula: ${selCentro.mt.toLocaleString()}`;
+  // Update steps
+  document.getElementById('step1').className='step done';
+  document.getElementById('step2').className='step active';
+  document.getElementById('step3').className='step active';
+  updBtn();
+}
+
+function clearSelection(){
+  selCentro=null;
+  document.getElementById('searchInput').style.display='';
+  document.getElementById('searchInput').value='';
+  document.getElementById('selectedCard').style.display='none';
+  document.getElementById('step1').className='step active';
+  document.getElementById('step2').className='step';
+  document.getElementById('step3').className='step';
+  updBtn();
+}
+
+// ===== GPS =====
+function startGPS(){
+  if(!navigator.geolocation){setGPS('err','GPS no disponible','');return}
+  setGPS('seek','Buscando senal GPS...','Asegurese de estar al aire libre');
+  watchId=navigator.geolocation.watchPosition(
+    p=>{
+      gps={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,alt:p.coords.altitude};
+      const q=gps.acc<10?'Excelente':gps.acc<30?'Buena':'Baja';
+      setGPS('ok',`Ubicacion fijada (${q})`,`Precision: ${gps.acc.toFixed(0)} metros`);
+      document.getElementById('dLat').textContent=gps.lat.toFixed(6);
+      document.getElementById('dLon').textContent=gps.lon.toFixed(6);
+      updMap();updBtn();
+      if(selCentro)document.getElementById('step2').className='step done';
+    },
+    e=>{
+      const m={1:'Permiso denegado. Abra Ajustes y permita GPS.',2:'GPS no disponible',3:'Muy lento. Intente al aire libre.'};
+      setGPS('err',m[e.code]||'Error GPS','Puede escribir coordenadas a mano abajo');
+    },
+    {enableHighAccuracy:true,timeout:30000,maximumAge:5000}
+  );
+}
+
+function setGPS(s,msg,detail){
+  const icon=document.getElementById('gpsIcon'),m=document.getElementById('gpsMsg'),d=document.getElementById('gpsDetail');
+  m.textContent=msg;d.textContent=detail||'';
+  if(s==='seek'){icon.textContent='📡';icon.className='gps-icon gps-seeking'}
+  else if(s==='ok'){icon.textContent='✅';icon.className='gps-icon'}
+  else{icon.textContent='❌';icon.className='gps-icon'}
+}
+
+function setManualGPS(){
+  const la=parseFloat(document.getElementById('mLat').value),lo=parseFloat(document.getElementById('mLon').value);
+  if(isNaN(la)||isNaN(lo)||la<-90||la>90||lo<-180||lo>180){toast('Coordenadas no validas');return}
+  gps={lat:la,lon:lo,acc:0,alt:null};
+  setGPS('ok','Coordenadas manuales','');
+  document.getElementById('dLat').textContent=la.toFixed(6);
+  document.getElementById('dLon').textContent=lo.toFixed(6);
+  if(selCentro)document.getElementById('step2').className='step done';
+  updMap();updBtn();
+}
+
+// ===== MAP =====
+function updMap(){
+  if(!gps||!window.L)return;
+  if(!map){
+    map=L.map('minimap',{zoomControl:false,attributionControl:false}).setView([gps.lat,gps.lon],16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+    marker=L.marker([gps.lat,gps.lon]).addTo(map);
+    setTimeout(()=>map.invalidateSize(),300);
+  }else{
+    marker.setLatLng([gps.lat,gps.lon]);map.setView([gps.lat,gps.lon]);
   }
-  return results;
 }
 
-function renderResults(results) {
-  const list = document.getElementById('resultsList');
-  if (!results.length) {
-    list.innerHTML = '<div class="result-item" style="color:var(--txt2)">Sin resultados</div>';
-    list.classList.add('show');
-    return;
+// ===== SAVE =====
+function updBtn(){
+  const btn=document.getElementById('btnSave'),hint=document.getElementById('btnHint');
+  if(selCentro&&gps){
+    btn.className='btn-save ready';hint.textContent='Todo listo. Presione GUARDAR.';
+  }else{
+    btn.className='btn-save not-ready';
+    if(!selCentro&&!gps)hint.textContent='Busque una escuela y espere la senal GPS';
+    else if(!selCentro)hint.textContent='Busque y seleccione una escuela';
+    else hint.textContent='Esperando senal GPS...';
   }
-  list.innerHTML = results.map((c, i) =>
-    `<div class="result-item" onclick="selectCentro(${i})" data-idx="${i}">
-      <span class="code">${c.c}</span> <span class="name">${c.n}</span>
-      <div class="loc">${c.m}, ${c.d} | ${c.z} | Mat: ${c.mt.toLocaleString()}</div>
-    </div>`
-  ).join('');
-  list.classList.add('show');
-  list._results = results;
 }
 
-function selectCentro(idx) {
-  const list = document.getElementById('resultsList');
-  selectedCentro = list._results[idx];
-  list.classList.remove('show');
-
-  document.getElementById('searchInput').style.display = 'none';
-  document.getElementById('selectedInfo').style.display = 'block';
-  document.getElementById('selName').textContent = `${selectedCentro.c} - ${selectedCentro.n}`;
-
-  const pf = document.getElementById('prefilledFields');
-  pf.innerHTML = [
-    ['Departamento', selectedCentro.d],
-    ['Municipio', selectedCentro.m],
-    ['Aldea', selectedCentro.a],
-    ['Zona', selectedCentro.z],
-    ['Tipo', selectedCentro.t],
-    ['Ciclos', selectedCentro.ci],
-    ['Administracion', selectedCentro.ad],
-    ['Matricula 2024', selectedCentro.mt.toLocaleString()]
-  ].map(([l, v]) => `<div><div class="pf-label">${l}</div><div class="pf-value">${v}</div></div>`).join('');
-
-  updateBtnGuardar();
-}
-
-function clearSelection() {
-  selectedCentro = null;
-  document.getElementById('searchInput').style.display = '';
-  document.getElementById('searchInput').value = '';
-  document.getElementById('selectedInfo').style.display = 'none';
-  updateBtnGuardar();
-}
-
-// ========== GPS ==========
-function startGPS() {
-  if (!navigator.geolocation) {
-    setGPSStatus('error', 'GPS no disponible en este dispositivo');
-    return;
-  }
-  setGPSStatus('seeking', 'Buscando senal GPS...');
-  gpsWatchId = navigator.geolocation.watchPosition(onGPSSuccess, onGPSError, {
-    enableHighAccuracy: true,
-    timeout: 30000,
-    maximumAge: 5000
-  });
-}
-
-function onGPSSuccess(pos) {
-  currentGPS = {
-    lat: pos.coords.latitude,
-    lon: pos.coords.longitude,
-    acc: pos.coords.accuracy,
-    alt: pos.coords.altitude
+function guardar(){
+  if(!selCentro||!gps)return;
+  const cfg=getCfg();
+  const rec={
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    timestamp:new Date().toISOString(),
+    codigo:selCentro.c,nombre:selCentro.n,
+    departamento:selCentro.d,municipio:selCentro.m,aldea:selCentro.a,
+    zona:selCentro.z,tipo:selCentro.t,administracion:selCentro.ad,
+    ciclos:selCentro.ci,matricula:selCentro.mt,
+    latitud:gps.lat,longitud:gps.lon,precision:gps.acc,altitud:gps.alt||'',
+    estado:document.getElementById('estado').value,
+    observaciones:document.getElementById('obs').value.trim(),
+    encuestador:cfg.name||'',
+    synced:false
   };
-  const accTxt = currentGPS.acc < 10 ? 'Excelente' : currentGPS.acc < 30 ? 'Buena' : 'Baja';
-  setGPSStatus('locked', `GPS fijado (${accTxt}: ${currentGPS.acc.toFixed(1)}m)`);
-  document.getElementById('dispLat').textContent = currentGPS.lat.toFixed(6);
-  document.getElementById('dispLon').textContent = currentGPS.lon.toFixed(6);
-  document.getElementById('dispAcc').textContent = currentGPS.acc.toFixed(1) + 'm';
-  document.getElementById('dispAlt').textContent = currentGPS.alt ? currentGPS.alt.toFixed(0) + 'm' : '--';
-  updateMap();
-  updateBtnGuardar();
-}
+  const regs=getReg();regs.push(rec);saveReg(regs);
 
-function onGPSError(err) {
-  const msgs = { 1: 'Permiso GPS denegado', 2: 'GPS no disponible', 3: 'Tiempo agotado' };
-  setGPSStatus('error', msgs[err.code] || 'Error GPS');
-}
+  // Success animation
+  const ov=document.getElementById('successOverlay');
+  document.getElementById('successSub').textContent=rec.nombre;
+  ov.classList.add('show');
+  setTimeout(()=>ov.classList.remove('show'),2000);
 
-function setGPSStatus(status, msg) {
-  document.getElementById('gpsDot').className = 'gps-dot ' + status;
-  document.getElementById('gpsInfo').textContent = msg;
-}
-
-function refreshGPS() {
-  if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
-  currentGPS = null;
-  setGPSStatus('seeking', 'Actualizando GPS...');
-  startGPS();
-}
-
-function setManualGPS() {
-  const lat = parseFloat(document.getElementById('manualLat').value);
-  const lon = parseFloat(document.getElementById('manualLon').value);
-  if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-    toast('Coordenadas invalidas'); return;
-  }
-  currentGPS = { lat, lon, acc: 0, alt: null };
-  setGPSStatus('locked', 'Coordenadas manuales');
-  document.getElementById('dispLat').textContent = lat.toFixed(6);
-  document.getElementById('dispLon').textContent = lon.toFixed(6);
-  document.getElementById('dispAcc').textContent = 'Manual';
-  document.getElementById('dispAlt').textContent = '--';
-  updateMap();
-  updateBtnGuardar();
-}
-
-// ========== MAP ==========
-function updateMap() {
-  if (!currentGPS) return;
-  const container = document.getElementById('mapContainer');
-
-  if (!window.L) {
-    container.innerHTML = `<div class="map-fallback"><strong>Mapa no disponible offline</strong><br>Lat: ${currentGPS.lat.toFixed(6)}<br>Lon: ${currentGPS.lon.toFixed(6)}</div>`;
-    return;
-  }
-
-  if (!map) {
-    document.getElementById('map').style.display = 'block';
-    map = L.map('map', { zoomControl: false }).setView([currentGPS.lat, currentGPS.lon], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'OSM',
-      maxZoom: 19
-    }).addTo(map);
-    marker = L.marker([currentGPS.lat, currentGPS.lon]).addTo(map);
-    L.circle([currentGPS.lat, currentGPS.lon], {
-      radius: currentGPS.acc,
-      color: '#003876',
-      fillColor: '#00a5e0',
-      fillOpacity: 0.15
-    }).addTo(map);
-    setTimeout(() => map.invalidateSize(), 200);
-  } else {
-    marker.setLatLng([currentGPS.lat, currentGPS.lon]);
-    map.setView([currentGPS.lat, currentGPS.lon]);
-  }
-}
-
-// ========== SAVE RECORD ==========
-function updateBtnGuardar() {
-  const btn = document.getElementById('btnGuardar');
-  btn.disabled = !(selectedCentro && currentGPS);
-}
-
-function guardarRegistro() {
-  if (!selectedCentro || !currentGPS) return;
-  const cfg = getConfig();
-  const record = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    timestamp: new Date().toISOString(),
-    codigo: selectedCentro.c,
-    nombre: selectedCentro.n,
-    departamento: selectedCentro.d,
-    municipio: selectedCentro.m,
-    aldea: selectedCentro.a,
-    zona: selectedCentro.z,
-    tipo: selectedCentro.t,
-    administracion: selectedCentro.ad,
-    ciclos: selectedCentro.ci,
-    matricula: selectedCentro.mt,
-    latitud: currentGPS.lat,
-    longitud: currentGPS.lon,
-    precision: currentGPS.acc,
-    altitud: currentGPS.alt || '',
-    estado: document.getElementById('estadoCentro').value,
-    observaciones: document.getElementById('observaciones').value.trim(),
-    encuestador: cfg.encuestador || '',
-    synced: false
-  };
-
-  const regs = getRegistros();
-  regs.push(record);
-  saveRegistros(regs);
-
-  toast('Registro guardado');
+  // Reset form
   clearSelection();
-  document.getElementById('estadoCentro').value = 'activo';
-  document.getElementById('observaciones').value = '';
-  updateHistorial();
+  document.getElementById('estado').value='activo';
+  document.getElementById('obs').value='';
+  updHist();
 
-  if (navigator.onLine && cfg.ghToken) {
-    syncRecord(record);
-  }
+  // Auto sync if online
+  if(navigator.onLine&&cfg.ghToken)syncRecord(rec);
 }
 
-// ========== LOCAL STORAGE ==========
-function getRegistros() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
-  catch { return []; }
-}
+// ===== STORAGE =====
+function getReg(){try{return JSON.parse(localStorage.getItem(DB)||'[]')}catch{return[]}}
+function saveReg(r){localStorage.setItem(DB,JSON.stringify(r))}
+function getCfg(){try{return JSON.parse(localStorage.getItem(CK)||'{}')}catch{return{}}}
+function saveCfg(c){localStorage.setItem(CK,JSON.stringify(c))}
 
-function saveRegistros(regs) {
-  localStorage.setItem(DB_KEY, JSON.stringify(regs));
-}
-
-// ========== SYNC (GitHub Issues) ==========
-async function syncRecord(record) {
-  const cfg = getConfig();
-  if (!cfg.ghToken || !cfg.ghRepo) return false;
-  try {
-    const title = `[GEO] ${record.codigo} - ${record.nombre}`;
-    const body = `## Registro de Georeferenciacion\n\n` +
-      `| Campo | Valor |\n|---|---|\n` +
-      `| **Codigo SEE** | ${record.codigo} |\n` +
-      `| **Nombre** | ${record.nombre} |\n` +
-      `| **Departamento** | ${record.departamento} |\n` +
-      `| **Municipio** | ${record.municipio} |\n` +
-      `| **Aldea** | ${record.aldea} |\n` +
-      `| **Zona** | ${record.zona} |\n` +
-      `| **Tipo** | ${record.tipo} |\n` +
-      `| **Administracion** | ${record.administracion} |\n` +
-      `| **Ciclos** | ${record.ciclos} |\n` +
-      `| **Matricula 2024** | ${record.matricula} |\n` +
-      `| **Latitud** | ${record.latitud} |\n` +
-      `| **Longitud** | ${record.longitud} |\n` +
-      `| **Precision (m)** | ${record.precision} |\n` +
-      `| **Altitud** | ${record.altitud || 'N/A'} |\n` +
-      `| **Estado** | ${record.estado} |\n` +
-      `| **Observaciones** | ${record.observaciones || '-'} |\n` +
-      `| **Encuestador** | ${record.encuestador} |\n` +
-      `| **Timestamp** | ${record.timestamp} |\n\n` +
-      `**Mapa:** https://www.openstreetmap.org/?mlat=${record.latitud}&mlon=${record.longitud}#map=17/${record.latitud}/${record.longitud}\n\n` +
-      `\`\`\`json\n${JSON.stringify(record)}\n\`\`\``;
-
-    const resp = await fetch(`https://api.github.com/repos/${cfg.ghRepo}/issues`, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + cfg.ghToken,
-        'Content-Type': 'application/json',
-        'Accept': 'application/vnd.github+json'
-      },
-      body: JSON.stringify({ title, body, labels: ['georeferencia'] })
+// ===== SYNC =====
+async function syncRecord(rec){
+  const cfg=getCfg();
+  if(!cfg.ghToken||!cfg.ghRepo)return false;
+  try{
+    const title=`[GEO] ${rec.codigo} - ${rec.nombre}`;
+    const body=`## Georeferenciacion\n\n`+
+      `| Campo | Valor |\n|---|---|\n`+
+      Object.entries({
+        'Codigo SEE':rec.codigo,'Nombre':rec.nombre,'Departamento':rec.departamento,
+        'Municipio':rec.municipio,'Aldea':rec.aldea,'Zona':rec.zona,'Tipo':rec.tipo,
+        'Administracion':rec.administracion,'Ciclos':rec.ciclos,'Matricula':rec.matricula,
+        'Latitud':rec.latitud,'Longitud':rec.longitud,'Precision':rec.precision+'m',
+        'Altitud':rec.altitud||'N/A','Estado':rec.estado,
+        'Observaciones':rec.observaciones||'-','Encuestador':rec.encuestador,'Fecha':rec.timestamp
+      }).map(([k,v])=>`| **${k}** | ${v} |`).join('\n')+
+      `\n\n[Ver en mapa](https://www.openstreetmap.org/?mlat=${rec.latitud}&mlon=${rec.longitud}#map=17/${rec.latitud}/${rec.longitud})\n\n`+
+      `\`\`\`json\n${JSON.stringify(rec)}\n\`\`\``;
+    const r=await fetch(`https://api.github.com/repos/${cfg.ghRepo}/issues`,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+cfg.ghToken,'Content-Type':'application/json','Accept':'application/vnd.github+json'},
+      body:JSON.stringify({title,body,labels:['georeferencia']})
     });
-    if (resp.ok || resp.status === 201) {
-      const regs = getRegistros();
-      const idx = regs.findIndex(r => r.id === record.id);
-      if (idx >= 0) { regs[idx].synced = true; saveRegistros(regs); }
-      updateHistorial();
-      return true;
+    if(r.ok||r.status===201){
+      const regs=getReg();const idx=regs.findIndex(x=>x.id===rec.id);
+      if(idx>=0){regs[idx].synced=true;saveReg(regs)}
+      updHist();return true;
     }
-  } catch {}
+  }catch{}
   return false;
 }
 
-async function syncAll() {
-  const cfg = getConfig();
-  if (!cfg.ghToken || !navigator.onLine) {
-    if (!cfg.ghToken) toast('Configura el token de GitHub en Config');
-    return;
+async function syncAll(){
+  const cfg=getCfg();
+  if(!cfg.ghToken){toast('Sincronizacion no configurada');return}
+  if(!navigator.onLine){toast('Sin internet. Se enviaran al recuperar senal.');return}
+  const regs=getReg(),pend=regs.filter(r=>!r.synced);
+  if(!pend.length){toast('Todo al dia. No hay pendientes.');return}
+  toast(`Enviando ${pend.length} registro(s)...`);
+  let ok=0;
+  for(const rec of pend){
+    if(await syncRecord(rec))ok++;
+    if(pend.length>5)await new Promise(r=>setTimeout(r,500));
   }
-  const regs = getRegistros();
-  const pending = regs.filter(r => !r.synced);
-  if (!pending.length) { toast('Todo sincronizado'); return; }
-
-  toast(`Sincronizando ${pending.length} registros...`);
-  let ok = 0;
-  for (const rec of pending) {
-    if (await syncRecord(rec)) ok++;
-    // Small delay to avoid rate limiting
-    if (pending.length > 5) await new Promise(r => setTimeout(r, 500));
-  }
-  toast(`${ok}/${pending.length} sincronizados`);
-  updateHistorial();
+  toast(ok===pend.length?`${ok} enviados correctamente`:`${ok} de ${pend.length} enviados`);
+  updHist();
 }
 
-// ========== EXPORT EXCEL ==========
-function exportarExcel() {
-  const regs = getRegistros();
-  if (!regs.length) { toast('No hay registros para exportar'); return; }
-
-  const data = regs.map(r => ({
-    'Timestamp': r.timestamp,
-    'Codigo SEE': r.codigo,
-    'Nombre Centro': r.nombre,
-    'Departamento': r.departamento,
-    'Municipio': r.municipio,
-    'Aldea': r.aldea,
-    'Zona': r.zona,
-    'Tipo': r.tipo,
-    'Administracion': r.administracion,
-    'Ciclos': r.ciclos,
-    'Matricula 2024': r.matricula,
-    'Latitud': r.latitud,
-    'Longitud': r.longitud,
-    'Precision (m)': r.precision,
-    'Altitud': r.altitud,
-    'Estado': r.estado,
-    'Observaciones': r.observaciones,
-    'Encuestador': r.encuestador,
-    'Sincronizado': r.synced ? 'Si' : 'No'
+// ===== EXPORT =====
+function exportExcel(){
+  const regs=getReg();
+  if(!regs.length){toast('No hay registros');return}
+  const data=regs.map(r=>({
+    Fecha:r.timestamp,'Codigo SEE':r.codigo,'Nombre Centro':r.nombre,
+    Departamento:r.departamento,Municipio:r.municipio,Aldea:r.aldea,
+    Zona:r.zona,Tipo:r.tipo,Administracion:r.administracion,Ciclos:r.ciclos,
+    'Matricula 2024':r.matricula,Latitud:r.latitud,Longitud:r.longitud,
+    'Precision (m)':r.precision,Altitud:r.altitud,Estado:r.estado,
+    Observaciones:r.observaciones,Encuestador:r.encuestador,Enviado:r.synced?'Si':'No'
   }));
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Georeferenciacion');
-  XLSX.writeFile(wb, `GeoEscuelas_${new Date().toISOString().slice(0, 10)}.xlsx`);
-  toast('Excel exportado');
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Datos');
+  XLSX.writeFile(wb,`GeoEscuelas_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel descargado');
 }
 
-// ========== HISTORIAL ==========
-function updateHistorial() {
-  const regs = getRegistros();
-  const synced = regs.filter(r => r.synced).length;
-  const pending = regs.length - synced;
-
-  document.getElementById('statTotal').textContent = regs.length;
-  document.getElementById('statSync').textContent = synced;
-  document.getElementById('statPend').textContent = pending;
-
-  const list = document.getElementById('historialList');
-  if (!regs.length) {
-    list.innerHTML = '<p style="color:var(--txt2);font-size:13px;text-align:center;padding:20px">Sin registros aun</p>';
-    return;
-  }
-
-  list.innerHTML = regs.slice().reverse().map(r => {
-    const date = new Date(r.timestamp);
-    const dateStr = date.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const syncIcon = r.synced ? '<span class="hi-synced">&#10004;</span>' : '<span class="hi-pending">&#9679; Pendiente</span>';
-    return `<div class="hist-item">
-      <div class="hi-name">${r.nombre}</div>
-      <div class="hi-meta">${r.codigo} | ${r.municipio}, ${r.departamento} | ${dateStr} | ${syncIcon}</div>
-    </div>`;
+// ===== HISTORY =====
+function updHist(){
+  const regs=getReg(),sy=regs.filter(r=>r.synced).length,pe=regs.length-sy;
+  document.getElementById('hTotal').textContent=regs.length;
+  document.getElementById('hSync').textContent=sy;
+  document.getElementById('hPend').textContent=pe;
+  const el=document.getElementById('histList');
+  if(!regs.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--gray)">Sin registros todavia</div>';return}
+  el.innerHTML=regs.slice().reverse().map(r=>{
+    const d=new Date(r.timestamp);
+    const ds=d.toLocaleDateString('es-HN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+    const badge=r.synced?'<span class="hi-badge hi-badge-ok">Enviado</span>':'<span class="hi-badge hi-badge-pend">Pendiente</span>';
+    return `<div class="hist-item"><div class="hi-name">${r.nombre} ${badge}</div><div class="hi-info">${r.codigo} &bull; ${r.municipio} &bull; ${ds} &bull; ${r.encuestador}</div></div>`;
   }).join('');
 }
 
-function borrarTodo() {
-  const regs = getRegistros();
-  if (!regs.length) return;
-  const pending = regs.filter(r => !r.synced).length;
-  const msg = pending > 0
-    ? `ATENCION: Hay ${pending} registros sin sincronizar que se perderan.\n\nBorrar ${regs.length} registros?`
-    : `Borrar ${regs.length} registros?`;
-  if (confirm(msg)) {
-    localStorage.removeItem(DB_KEY);
-    updateHistorial();
-    toast('Registros borrados');
-  }
+function borrarTodo(){
+  const regs=getReg();if(!regs.length)return;
+  const pe=regs.filter(r=>!r.synced).length;
+  if(!confirm(pe>0?`HAY ${pe} REGISTROS SIN ENVIAR.\n\nSi los borra se pierden.\n\nBorrar ${regs.length} registros?`:`Borrar ${regs.length} registros?`))return;
+  localStorage.removeItem(DB);updHist();toast('Registros borrados');
 }
 
-// ========== CONFIG ==========
-function getConfig() {
-  try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); }
-  catch { return {}; }
+// ===== NAVIGATION =====
+function goPage(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('show'));
+  document.querySelectorAll('.bnav-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page'+p).classList.add('show');
+  document.getElementById('nav'+p).classList.add('active');
+  if(p==='Hist')updHist();
+  if(p==='Reg'&&map)setTimeout(()=>map.invalidateSize(),100);
 }
 
-function loadConfig() {
-  const cfg = getConfig();
-  document.getElementById('cfgEncuestador').value = cfg.encuestador || '';
-  document.getElementById('cfgGhToken').value = cfg.ghToken || '';
-  document.getElementById('cfgGhRepo').value = cfg.ghRepo || DEFAULT_GH_REPO;
-}
-
-function saveConfig() {
-  const cfg = {
-    encuestador: document.getElementById('cfgEncuestador').value.trim(),
-    ghToken: document.getElementById('cfgGhToken').value.trim(),
-    ghRepo: document.getElementById('cfgGhRepo').value.trim() || DEFAULT_GH_REPO
-  };
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  toast('Configuracion guardada');
-}
-
-async function testAPI() {
-  const token = document.getElementById('cfgGhToken').value.trim();
-  const repo = document.getElementById('cfgGhRepo').value.trim() || DEFAULT_GH_REPO;
-  const el = document.getElementById('apiTestResult');
-  if (!token) { el.innerHTML = '<span style="color:var(--err)">Ingresa un token primero</span>'; return; }
-  el.innerHTML = 'Probando...';
-  try {
-    const r = await fetch(`https://api.github.com/repos/${repo}`, {
-      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
-    });
-    const j = await r.json();
-    if (r.ok && j.has_issues) {
-      el.innerHTML = `<span style="color:var(--ok)">Conectado a ${j.full_name}</span>`;
-    } else if (r.status === 401) {
-      el.innerHTML = '<span style="color:var(--err)">Token invalido</span>';
-    } else {
-      el.innerHTML = '<span style="color:var(--err)">Repo no encontrado o sin issues</span>';
-    }
-  } catch {
-    el.innerHTML = '<span style="color:var(--err)">Error de conexion</span>';
-  }
-}
-
-function updateConfigInfo() {
-  document.getElementById('cfgCentrosCount').textContent = centros.length.toLocaleString();
-  const bytes = new Blob([localStorage.getItem(DB_KEY) || '']).size;
-  document.getElementById('cfgStorage').textContent = (bytes / 1024).toFixed(1) + ' KB';
-}
-
-// ========== TABS ==========
-function switchTab(name) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.bottom-nav .tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('panel' + name).classList.add('active');
-  document.getElementById('tab' + name).classList.add('active');
-  if (name === 'Historial') updateHistorial();
-  if (name === 'Config') updateConfigInfo();
-  if (name === 'Registrar' && map) setTimeout(() => map.invalidateSize(), 100);
-}
-
-// ========== TOAST ==========
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
+// ===== TOAST =====
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 </script>
 </body>
 </html>
