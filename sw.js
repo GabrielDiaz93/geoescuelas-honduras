@@ -1,7 +1,5 @@
-const CACHE_NAME = 'geoescuelas-v3';
+const CACHE_NAME = 'geoescuelas-v4';
 const ASSETS = [
-  './',
-  './georeferenciacion.html',
   './centros.json',
   './manifest.json',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -24,17 +22,32 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = e.request.url;
+
+  // HTML: network first, fall back to cache (always get latest version)
+  if (e.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        return response;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Everything else: cache first, fall back to network
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
+        if (response && response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
         return response;
       }).catch(() => {
-        if (e.request.url.includes('tile.openstreetmap.org')) {
+        if (url.includes('tile.openstreetmap.org')) {
           return new Response('', { status: 503, statusText: 'Offline' });
         }
       });
