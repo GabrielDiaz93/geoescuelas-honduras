@@ -161,6 +161,14 @@ textarea{resize:vertical;min-height:60px}
       <div>Precision: <strong id="dispAcc">--</strong></div>
       <div>Altitud: <strong id="dispAlt">--</strong></div>
     </div>
+    <details style="margin-top:8px">
+      <summary style="font-size:12px;color:var(--pri);cursor:pointer">Ingresar coordenadas manualmente</summary>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <input type="number" step="any" id="manualLat" placeholder="Latitud (ej: 14.07)" style="font-size:13px">
+        <input type="number" step="any" id="manualLon" placeholder="Longitud (ej: -87.19)" style="font-size:13px">
+      </div>
+      <button class="btn-sm btn-secondary" onclick="setManualGPS()" style="margin-top:6px">Fijar coordenadas</button>
+    </details>
   </div>
 
   <!-- Estado y observaciones -->
@@ -460,6 +468,22 @@ function refreshGPS() {
   currentGPS = null;
   setGPSStatus('seeking', 'Actualizando GPS...');
   startGPS();
+}
+
+function setManualGPS() {
+  const lat = parseFloat(document.getElementById('manualLat').value);
+  const lon = parseFloat(document.getElementById('manualLon').value);
+  if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    toast('Coordenadas invalidas'); return;
+  }
+  currentGPS = { lat, lon, acc: 0, alt: null };
+  setGPSStatus('locked', 'Coordenadas manuales');
+  document.getElementById('dispLat').textContent = lat.toFixed(6);
+  document.getElementById('dispLon').textContent = lon.toFixed(6);
+  document.getElementById('dispAcc').textContent = 'Manual';
+  document.getElementById('dispAlt').textContent = '--';
+  updateMap();
+  updateBtnGuardar();
 }
 
 // ========== MAP ==========
